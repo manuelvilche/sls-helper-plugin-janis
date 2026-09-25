@@ -74,6 +74,7 @@ describe('Hooks', () => {
 				},
 				logs: {
 					restApi: {
+						role: { 'Fn::GetAtt': ['serverlessApiGatewayCloudWatchRole', 'Arn'] },
 						accessLogging: true,
 						executionLogging: false,
 						level: 'INFO',
@@ -106,7 +107,9 @@ describe('Hooks', () => {
 							integStatus: '$context.integrationStatus',
 							integLatency: '$context.integrationLatency',
 							traceId: '$context.xrayTraceId',
-							wafCode: '$context.wafResponseCode'
+							wafCode: '$context.wafResponseCode',
+							page: '$context.requestOverride.querystring.page',
+							pageSize: '$context.requestOverride.querystring.pageSize'
 						})
 					}
 				}
@@ -256,7 +259,8 @@ describe('Hooks', () => {
 				'serverless-api-gateway-caching',
 				'serverless-plugin-stage-variables',
 				'@janiscommerce/serverless-plugin-remove-authorizer-permissions',
-				'serverless-plugin-split-stacks'
+				'serverless-plugin-split-stacks',
+				'./node_modules/sls-helper-plugin-janis/lib/plugins/add-invoke-function-permissions'
 			],
 			resources: {
 				Resources: {
@@ -437,8 +441,24 @@ describe('Hooks', () => {
 							},
 							StatusCode: '504'
 						}
-					}
+					},
 
+					serverlessApiGatewayCloudWatchRole: {
+						Type: 'AWS::IAM::Role',
+						Properties: {
+							AssumeRolePolicyDocument: {
+								Version: '2012-10-17',
+								Statement: [{
+									Effect: 'Allow',
+									Principal: {
+										Service: ['apigateway.amazonaws.com']
+									},
+									Action: 'sts:AssumeRole'
+								}]
+							},
+							ManagedPolicyArns: ['arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs']
+						}
+					}
 				},
 
 				extensions: {
